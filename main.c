@@ -67,6 +67,7 @@ Token *token_next_symbol(FILE *stream)
     static const char *TOKEN_SYMBOLS[] = {
         "<",
         "?",
+        "=",
     };
 
     static const size_t TOKEN_SYMBOLS_COUNT = sizeof(TOKEN_SYMBOLS) / sizeof(const char *);
