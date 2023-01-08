@@ -21,6 +21,7 @@ static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace"};
 static const TokenType TokenType_SYMBOL = (TokenType){"Symbol"};
 static const TokenType TokenType_NAME = (TokenType){"Name"};
 static const TokenType TokenType_QUOTED_VALUE = (TokenType){"QuotedValue"};
+static const TokenType TokenType_CONTENT = (TokenType){"Content"};
 
 typedef struct {
     const TokenType *type;  /* pointer is not owned */
@@ -90,7 +91,7 @@ Token *token_next_symbol(FILE *stream)
 
 Token *token_next_name(FILE *stream)
 {
-    static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890.'";
+    static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
 
     static const size_t MAXLEN = 256;
     char buff[MAXLEN];
@@ -155,6 +156,33 @@ done:
         return NULL;
 }
 
+Token *token_next_content(FILE *stream)
+{
+    static const size_t MAXLEN = 256;
+    char buff[MAXLEN];
+
+    size_t bytes = 0;
+
+    while (bytes < MAXLEN) {
+        size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
+        if (buff[bytes] == '<') {
+            fseek(stream, -1, SEEK_CUR);
+            goto done;
+        }
+        if (feof(stream))
+            goto done;
+        bytes += bytes_read;
+    }
+
+done:
+    buff[bytes] = '\0';
+
+    if (bytes > 0)
+        return token_new(&TokenType_CONTENT, bytes, buff);
+    else
+        return NULL;
+}
+
 void token_free(Token *self)
 {
     if (self)
@@ -182,7 +210,7 @@ int main(void)
             if (!token)
                 token = token_next_whitespace(stream);
             if (!token)
-                token = token_next_name(stream);
+                token = token_next_content(stream);
         } else if (ctx.context == CTX_TAG) {
             if (!token)
                 token = token_next_symbol(stream);
