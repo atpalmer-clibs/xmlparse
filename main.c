@@ -161,23 +161,38 @@ void token_free(Token *self)
         free(self);
 }
 
+typedef struct {
+    enum { CTX_TAG, CTX_CONTENT } context;
+} Context;
+
 int main(void)
 {
     FILE *stream = fopen(INFILE, "r");
     if (!stream)
         die_FileError(INFILE);
 
+    Context ctx = { CTX_CONTENT };
+
     for (;;) {
         Token *token = NULL;
 
-        if (!token)
-            token = token_next_symbol(stream);
-        if (!token)
-            token = token_next_whitespace(stream);
-        if (!token)
-            token = token_next_name(stream);
-        if (!token)
-            token = token_next_quoted_value(stream);
+        if (ctx.context == CTX_CONTENT) {
+            if (!token)
+                token = token_next_symbol(stream);
+            if (!token)
+                token = token_next_whitespace(stream);
+            if (!token)
+                token = token_next_name(stream);
+        } else if (ctx.context == CTX_TAG) {
+            if (!token)
+                token = token_next_symbol(stream);
+            if (!token)
+                token = token_next_whitespace(stream);
+            if (!token)
+                token = token_next_name(stream);
+            if (!token)
+                token = token_next_quoted_value(stream);
+        }
 
         if (!token) {
             int c;
@@ -187,7 +202,14 @@ int main(void)
             break;
         }
 
-        printf("Token: <%s>: '%s' [len: %zu]\n", token->type->name, token->value, token->len);
+        printf("[%s] Token: <%s>: '%s' [len: %zu]\n", (ctx.context ? "CONTENT" : "TAG"), token->type->name, token->value, token->len);
+
+        if (token->type == &TokenType_SYMBOL && strncmp(token->value, "<", token->len) == 0) {
+            ctx.context = CTX_TAG;
+        }
+        else if (token->type == &TokenType_SYMBOL && strncmp(token->value, ">", token->len) == 0) {
+            ctx.context = CTX_CONTENT;
+        }
 
         token_free(token);
 
