@@ -90,7 +90,7 @@ Token *token_next_symbol(FILE *stream)
 
 Token *token_next_name(FILE *stream)
 {
-    static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
+    static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890.'";
 
     static const size_t MAXLEN = 256;
     char buff[MAXLEN];
