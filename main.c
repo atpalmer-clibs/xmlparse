@@ -84,10 +84,19 @@ Token *_token_next_symbol(FILE *stream, const char *token_symbols)
     return NULL;
 }
 
-Token *token_next_symbol(FILE *stream)
+Token *token_next_content_symbol(FILE *stream)
 {
     static const char TOKEN_SYMBOLS[] = {
         '<',
+        '\0',
+    };
+
+    return _token_next_symbol(stream, TOKEN_SYMBOLS);
+}
+
+Token *token_next_tag_symbol(FILE *stream)
+{
+    static const char TOKEN_SYMBOLS[] = {
         '>',
         '/',
         '?',
@@ -215,14 +224,14 @@ int main(void)
 
         if (ctx.context == CTX_CONTENT) {
             if (!token)
-                token = token_next_symbol(stream);
+                token = token_next_content_symbol(stream);
             if (!token)
                 token = token_next_whitespace(stream);
             if (!token)
                 token = token_next_content(stream);
         } else if (ctx.context == CTX_TAG) {
             if (!token)
-                token = token_next_symbol(stream);
+                token = token_next_tag_symbol(stream);
             if (!token)
                 token = token_next_whitespace(stream);
             if (!token)
