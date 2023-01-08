@@ -67,6 +67,8 @@ Token *token_next_symbol(FILE *stream)
 {
     static const char *TOKEN_SYMBOLS[] = {
         "<",
+        ">",
+        "/",
         "?",
         "=",
     };
@@ -165,7 +167,7 @@ int main(void)
     if (!stream)
         die_FileError(INFILE);
 
-    for (int x = 0; x < 20; ++x) {
+    for (int x = 0; x < 100; ++x) {
         Token *token = NULL;
 
         if (!token)
