@@ -49,19 +49,28 @@ Token *token_next_whitespace(FILE *stream)
         '\0',  /* sentinel */
     };
 
-    char c;
-    size_t bytes_read = fread(&c, 1, 1, stream);
-    if (bytes_read < 1)
-        return NULL;
+    static const size_t MAXLEN = 256;
+    char buff[MAXLEN];
 
-    const char *curr = &TOKEN_WHITESPACE[0];
-    for (; *curr; ++curr) {
-        if (c == *curr)
-            return token_new(&TokenType_WHITESPACE, 1, &c);
+    size_t bytes = 0;
+
+    for (;;) {
+        size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
+        if (bytes_read < 1)
+            return NULL;
+        if (!strchr(TOKEN_WHITESPACE, buff[bytes])) {
+            fseek(stream, -bytes_read, SEEK_CUR);
+            break;
+        }
+        ++bytes;
     }
 
-    fseek(stream, -bytes_read, SEEK_CUR);
-    return NULL;
+    buff[bytes] = '\0';
+
+    if (bytes > 0)
+        return token_new(&TokenType_WHITESPACE, bytes, buff);
+    else
+        return NULL;
 }
 
 Token *token_next_symbol(FILE *stream)
