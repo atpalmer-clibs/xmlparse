@@ -20,6 +20,7 @@ typedef struct {
 static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace"};
 static const TokenType TokenType_SYMBOL = (TokenType){"Symbol"};
 static const TokenType TokenType_NAME = (TokenType){"Name"};
+static const TokenType TokenType_QUOTED_VALUE = (TokenType){"QuotedValue"};
 
 typedef struct {
     const TokenType *type;  /* pointer is not owned */
@@ -110,6 +111,48 @@ Token *token_next_name(FILE *stream)
         return NULL;
 }
 
+Token *token_next_quoted_value(FILE *stream)
+{
+    static const size_t MAXLEN = 256;
+    char buff[MAXLEN];
+
+    size_t bytes = 0;
+
+    size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
+    if (buff[bytes] != '"') {
+        fseek(stream, -1, SEEK_CUR);
+        goto done;
+    }
+    bytes += bytes_read;
+
+    while (bytes < MAXLEN) {
+        bytes_read = fread(&buff[bytes], 1, 1, stream);
+        if (feof(stream))
+            goto done;
+        if (buff[bytes] == '\\' && bytes < MAXLEN) {
+            bytes += bytes_read;
+            bytes_read = fread(&buff[bytes], 1, 1, stream);
+            if (feof(stream))
+                goto done;
+            bytes += bytes_read;
+            continue;
+        }
+        if (buff[bytes] == '"') {
+            bytes += bytes_read;
+            break;
+        }
+        bytes += bytes_read;
+    }
+
+done:
+    buff[bytes] = '\0';
+
+    if (bytes > 0)
+        return token_new(&TokenType_QUOTED_VALUE, bytes, buff);
+    else
+        return NULL;
+}
+
 void token_free(Token *self)
 {
     if (self)
@@ -122,7 +165,7 @@ int main(void)
     if (!stream)
         die_FileError(INFILE);
 
-    for (int x = 0; x < 3; ++x) {
+    for (int x = 0; x < 20; ++x) {
         Token *token = NULL;
 
         if (!token)
@@ -131,6 +174,8 @@ int main(void)
             token = token_next_whitespace(stream);
         if (!token)
             token = token_next_name(stream);
+        if (!token)
+            token = token_next_quoted_value(stream);
 
         if (!token) {
             int c;
