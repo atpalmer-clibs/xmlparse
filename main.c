@@ -75,26 +75,21 @@ Token *token_next_whitespace(FILE *stream)
 
 Token *token_next_symbol(FILE *stream)
 {
-    static const char *TOKEN_SYMBOLS[] = {
-        "<",
-        ">",
-        "/",
-        "?",
-        "=",
+    static const char TOKEN_SYMBOLS[] = {
+        '<',
+        '>',
+        '/',
+        '?',
+        '=',
+        '\0',
     };
 
-    static const size_t TOKEN_SYMBOLS_COUNT = sizeof(TOKEN_SYMBOLS) / sizeof(const char *);
+    char buff;
+    size_t bytes_read = fread(&buff, 1, 1, stream);
+    if (bytes_read == 1 && strchr(TOKEN_SYMBOLS, buff))
+        return token_new(&TokenType_SYMBOL, 1, &buff);
 
-    for (size_t i = 0; i < TOKEN_SYMBOLS_COUNT; ++i) {
-        const char *curr_sym = TOKEN_SYMBOLS[i];
-        size_t len = strlen(curr_sym);
-        char buff[len];
-        size_t bytes_read = fread(&buff, 1, len, stream);
-        if (bytes_read == len && strncmp(buff, curr_sym, bytes_read) == 0) {
-            return token_new(&TokenType_SYMBOL, len, curr_sym);
-        }
-        fseek(stream, -bytes_read, SEEK_CUR);
-    }
+    fseek(stream, -bytes_read, SEEK_CUR);
     return NULL;
 }
 
