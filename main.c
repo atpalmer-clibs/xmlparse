@@ -74,28 +74,29 @@ Token *token_next_whitespace(FILE *stream)
         return NULL;
 }
 
-Token *_token_next_symbol(FILE *stream, const TokenType *type, const char *token_symbols)
+char stream_expect_char_in(FILE *stream, const char *chars)
 {
     char buff;
     size_t bytes_read = fread(&buff, 1, 1, stream);
     if (bytes_read != 1)
         goto fail;  /* IO error */
-    if (strchr(token_symbols, buff))
-        return token_new(type, 1, &buff);
+    if (strchr(chars, buff))
+        return buff;
 
 fail:
     fseek(stream, -bytes_read, SEEK_CUR);
-    return NULL;
+    return '\0';
 }
 
 Token *token_next_tagstart_symbol(FILE *stream)
 {
-    static const char TOKEN_SYMBOLS[] = {
-        '<',
-        '\0',
-    };
+    if (!stream_expect_char_in(stream, "<"))
+        return NULL;
 
-    return _token_next_symbol(stream, &TokenType_TAGSTART_SYMBOL, TOKEN_SYMBOLS);
+    if (stream_expect_char_in(stream, "/"))
+        return token_new(&TokenType_TAGSTART_SYMBOL, 2, "</");
+    else
+        return token_new(&TokenType_TAGSTART_SYMBOL, 1, "<");
 }
 
 Token *token_next_tag_symbol(FILE *stream)
@@ -108,7 +109,11 @@ Token *token_next_tag_symbol(FILE *stream)
         '\0',
     };
 
-    return _token_next_symbol(stream, &TokenType_SYMBOL, TOKEN_SYMBOLS);
+    char result = stream_expect_char_in(stream, TOKEN_SYMBOLS);
+    if (!result)
+        return NULL;
+
+    return token_new(&TokenType_SYMBOL, 1, &result);
 }
 
 Token *token_next_name(FILE *stream)
