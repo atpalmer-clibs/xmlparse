@@ -19,6 +19,7 @@ typedef struct {
 
 static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace"};
 static const TokenType TokenType_SYMBOL = (TokenType){"Symbol"};
+static const TokenType TokenType_TAGSTART_SYMBOL = (TokenType){"TagStartSymbol"};
 static const TokenType TokenType_NAME = (TokenType){"Name"};
 static const TokenType TokenType_QUOTED_VALUE = (TokenType){"QuotedValue"};
 static const TokenType TokenType_CONTENT = (TokenType){"Content"};
@@ -84,14 +85,14 @@ Token *_token_next_symbol(FILE *stream, const TokenType *type, const char *token
     return NULL;
 }
 
-Token *token_next_content_symbol(FILE *stream)
+Token *token_next_tagstart_symbol(FILE *stream)
 {
     static const char TOKEN_SYMBOLS[] = {
         '<',
         '\0',
     };
 
-    return _token_next_symbol(stream, &TokenType_SYMBOL, TOKEN_SYMBOLS);
+    return _token_next_symbol(stream, &TokenType_TAGSTART_SYMBOL, TOKEN_SYMBOLS);
 }
 
 Token *token_next_tag_symbol(FILE *stream)
@@ -224,7 +225,7 @@ int main(void)
 
         if (ctx.context == CTX_CONTENT) {
             if (!token)
-                token = token_next_content_symbol(stream);
+                token = token_next_tagstart_symbol(stream);
             if (!token)
                 token = token_next_whitespace(stream);
             if (!token)
@@ -250,7 +251,7 @@ int main(void)
 
         printf("[%s] Token: <%s>: '%s' [len: %zu]\n", (ctx.context ? "CONTENT" : "TAG"), token->type->name, token->value, token->len);
 
-        if (token->type == &TokenType_SYMBOL && strncmp(token->value, "<", token->len) == 0) {
+        if (token->type == &TokenType_TAGSTART_SYMBOL) {
             ctx.context = CTX_TAG;
         }
         else if (token->type == &TokenType_SYMBOL && strncmp(token->value, ">", token->len) == 0) {
