@@ -95,6 +95,8 @@ Token *token_next_tagstart_symbol(FILE *stream)
 
     if (stream_expect_char_in(stream, "/"))
         return token_new(&TokenType_TAGSTART_SYMBOL, 2, "</");
+    else if (stream_expect_char_in(stream, "?"))
+        return token_new(&TokenType_TAGSTART_SYMBOL, 2, "<?");
     else
         return token_new(&TokenType_TAGSTART_SYMBOL, 1, "<");
 }
