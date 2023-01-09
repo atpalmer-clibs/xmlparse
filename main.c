@@ -78,9 +78,12 @@ Token *_token_next_symbol(FILE *stream, const TokenType *type, const char *token
 {
     char buff;
     size_t bytes_read = fread(&buff, 1, 1, stream);
-    if (bytes_read == 1 && strchr(token_symbols, buff))
+    if (bytes_read != 1)
+        goto fail;  /* IO error */
+    if (strchr(token_symbols, buff))
         return token_new(type, 1, &buff);
 
+fail:
     fseek(stream, -bytes_read, SEEK_CUR);
     return NULL;
 }
