@@ -73,12 +73,12 @@ Token *token_next_whitespace(FILE *stream)
         return NULL;
 }
 
-Token *_token_next_symbol(FILE *stream, const char *token_symbols)
+Token *_token_next_symbol(FILE *stream, const TokenType *type, const char *token_symbols)
 {
     char buff;
     size_t bytes_read = fread(&buff, 1, 1, stream);
     if (bytes_read == 1 && strchr(token_symbols, buff))
-        return token_new(&TokenType_SYMBOL, 1, &buff);
+        return token_new(type, 1, &buff);
 
     fseek(stream, -bytes_read, SEEK_CUR);
     return NULL;
@@ -91,7 +91,7 @@ Token *token_next_content_symbol(FILE *stream)
         '\0',
     };
 
-    return _token_next_symbol(stream, TOKEN_SYMBOLS);
+    return _token_next_symbol(stream, &TokenType_SYMBOL, TOKEN_SYMBOLS);
 }
 
 Token *token_next_tag_symbol(FILE *stream)
@@ -104,7 +104,7 @@ Token *token_next_tag_symbol(FILE *stream)
         '\0',
     };
 
-    return _token_next_symbol(stream, TOKEN_SYMBOLS);
+    return _token_next_symbol(stream, &TokenType_SYMBOL, TOKEN_SYMBOLS);
 }
 
 Token *token_next_name(FILE *stream)
