@@ -149,14 +149,11 @@ Token *token_next_name(FILE *stream)
     size_t bytes = 0;
 
     while (bytes < MAXLEN) {
-        size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
-        if (!strchr(NAME_CHARS, buff[bytes]))
+        buff[bytes] = stream_expect_char_in(stream, NAME_CHARS);
+        if (!buff[bytes])
             break;
-        bytes += bytes_read;
+        ++bytes;
     }
-
-    fseek(stream, -1, SEEK_CUR);
-    buff[bytes] = '\0';
 
     if (bytes > 0)
         return token_new(&TokenType_NAME, bytes, buff);
