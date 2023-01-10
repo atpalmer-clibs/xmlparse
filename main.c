@@ -20,6 +20,7 @@ typedef struct {
 static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace"};
 static const TokenType TokenType_SYMBOL = (TokenType){"Symbol"};
 static const TokenType TokenType_TAGSTART_SYMBOL = (TokenType){"TagStartSymbol"};
+static const TokenType TokenType_TAGEND_SYMBOL = (TokenType){"TagEndSymbol"};
 static const TokenType TokenType_XMLDECLSTART_SYMBOL = (TokenType){"XmlDeclStartSymbol"};
 static const TokenType TokenType_XMLDECLEND_SYMBOL = (TokenType){"XmlDeclEndSymbol"};
 static const TokenType TokenType_NAME = (TokenType){"Name"};
@@ -103,6 +104,14 @@ Token *token_next_tagstart_symbol(FILE *stream)
         return token_new(&TokenType_TAGSTART_SYMBOL, 1, "<");
 }
 
+Token *token_next_tagend_symbol(FILE *stream)
+{
+    if (!stream_expect_char_in(stream, ">"))
+        return NULL;
+
+    return token_new(&TokenType_TAGEND_SYMBOL, 1, ">");
+}
+
 Token *token_next_xmldeclend_symbol(FILE *stream)
 {
     if (!stream_expect_char_in(stream, "?"))
@@ -117,9 +126,6 @@ Token *token_next_xmldeclend_symbol(FILE *stream)
 Token *token_next_tag_symbol(FILE *stream)
 {
     static const char TOKEN_SYMBOLS[] = {
-        '>',
-        '/',
-        '?',
         '=',
         '\0',
     };
@@ -243,6 +249,7 @@ TokenGetter XmlDecl_Funcs[] = {
 };
 
 TokenGetter Tag_Funcs[] = {
+    token_next_tagend_symbol,
     token_next_tag_symbol,
     token_next_whitespace,
     token_next_name,
@@ -308,7 +315,7 @@ int main(void)
         else if (token->type == &TokenType_XMLDECLEND_SYMBOL) {
             ctx.context = &CTP_CONTENT;
         }
-        else if (token->type == &TokenType_SYMBOL && strncmp(token->value, ">", token->len) == 0) {
+        else if (token->type == &TokenType_TAGEND_SYMBOL) {
             ctx.context = &CTP_CONTENT;
         }
 
