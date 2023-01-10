@@ -123,18 +123,12 @@ Token *token_next_xmldeclend_symbol(FILE *stream)
         return token_new(&TokenType_SYMBOL, 1, "?");
 }
 
-Token *token_next_tag_symbol(FILE *stream)
+Token *token_next_equals_symbol(FILE *stream)
 {
-    static const char TOKEN_SYMBOLS[] = {
-        '=',
-        '\0',
-    };
-
-    char result = stream_expect_char_in(stream, TOKEN_SYMBOLS);
-    if (!result)
+    if (!stream_expect_char_in(stream, "="))
         return NULL;
 
-    return token_new(&TokenType_SYMBOL, 1, &result);
+    return token_new(&TokenType_SYMBOL, 1, "=");
 }
 
 Token *token_next_name(FILE *stream)
@@ -241,18 +235,18 @@ typedef Token *(*TokenGetter)(FILE *stream);
 
 TokenGetter XmlDecl_Funcs[] = {
     token_next_xmldeclend_symbol,
-    token_next_tag_symbol,
     token_next_whitespace,
     token_next_name,
+    token_next_equals_symbol,
     token_next_quoted_value,
     NULL,
 };
 
 TokenGetter Tag_Funcs[] = {
     token_next_tagend_symbol,
-    token_next_tag_symbol,
     token_next_whitespace,
     token_next_name,
+    token_next_equals_symbol,
     token_next_quoted_value,
     NULL,
 };
