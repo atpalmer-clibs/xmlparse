@@ -13,6 +13,20 @@ void die_FileError(const char *fname)
     exit(-1);
 }
 
+char stream_expect_char_in(FILE *stream, const char *chars)
+{
+    char buff;
+    size_t bytes_read = fread(&buff, 1, 1, stream);
+    if (bytes_read != 1)
+        goto fail;  /* IO error */
+    if (strchr(chars, buff))
+        return buff;
+
+fail:
+    fseek(stream, -bytes_read, SEEK_CUR);
+    return '\0';
+}
+
 typedef struct _Token Token;
 
 typedef Token *(*TokenGetter)(FILE *stream);
@@ -73,36 +87,16 @@ Token *token_next_whitespace(FILE *stream)
     size_t bytes = 0;
 
     for (;;) {
-        size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
-        if (bytes_read < 1)
-            return NULL;
-        if (!strchr(TOKEN_WHITESPACE, buff[bytes])) {
-            fseek(stream, -bytes_read, SEEK_CUR);
+        buff[bytes] = stream_expect_char_in(stream, TOKEN_WHITESPACE);
+        if (!buff[bytes])
             break;
-        }
         ++bytes;
     }
-
-    buff[bytes] = '\0';
 
     if (bytes > 0)
         return token_new(&TokenType_WHITESPACE, bytes, buff);
     else
         return NULL;
-}
-
-char stream_expect_char_in(FILE *stream, const char *chars)
-{
-    char buff;
-    size_t bytes_read = fread(&buff, 1, 1, stream);
-    if (bytes_read != 1)
-        goto fail;  /* IO error */
-    if (strchr(chars, buff))
-        return buff;
-
-fail:
-    fseek(stream, -bytes_read, SEEK_CUR);
-    return '\0';
 }
 
 Token *token_next_tagstart_symbol(FILE *stream)
