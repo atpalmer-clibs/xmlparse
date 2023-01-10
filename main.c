@@ -219,13 +219,39 @@ void token_free(Token *self)
         free(self);
 }
 
+typedef Token *(*TokenGetter)(FILE *stream);
+
+TokenGetter XmlDecl_Funcs[] = {
+    token_next_tag_symbol,
+    token_next_whitespace,
+    token_next_name,
+    token_next_quoted_value,
+    NULL,
+};
+
+TokenGetter Tag_Funcs[] = {
+    token_next_tag_symbol,
+    token_next_whitespace,
+    token_next_name,
+    token_next_quoted_value,
+    NULL,
+};
+
+TokenGetter Content_Funcs[] = {
+    token_next_tagstart_symbol,
+    token_next_whitespace,
+    token_next_content,
+    NULL,
+};
+
 typedef struct {
     const char *name;
+    TokenGetter *funcs;
 } ContextType;
 
-static const ContextType CTP_XMLDECL = (ContextType){"XmlDecl"};
-static const ContextType CTP_TAG = (ContextType){"Tag"};
-static const ContextType CTP_CONTENT = (ContextType){"Content"};
+static const ContextType CTP_XMLDECL = (ContextType){"XmlDecl", XmlDecl_Funcs};
+static const ContextType CTP_TAG = (ContextType){"Tag", Tag_Funcs};
+static const ContextType CTP_CONTENT = (ContextType){"Content", Content_Funcs};
 
 typedef struct {
     const ContextType *context;
@@ -242,31 +268,12 @@ int main(void)
     for (;;) {
         Token *token = NULL;
 
-        if (ctx.context == &CTP_CONTENT) {
-            if (!token)
-                token = token_next_tagstart_symbol(stream);
-            if (!token)
-                token = token_next_whitespace(stream);
-            if (!token)
-                token = token_next_content(stream);
-        } else if (ctx.context == &CTP_XMLDECL) {
-            if (!token)
-                token = token_next_tag_symbol(stream);
-            if (!token)
-                token = token_next_whitespace(stream);
-            if (!token)
-                token = token_next_name(stream);
-            if (!token)
-                token = token_next_quoted_value(stream);
-        } else if (ctx.context == &CTP_TAG) {
-            if (!token)
-                token = token_next_tag_symbol(stream);
-            if (!token)
-                token = token_next_whitespace(stream);
-            if (!token)
-                token = token_next_name(stream);
-            if (!token)
-                token = token_next_quoted_value(stream);
+        TokenGetter *getter = ctx.context->funcs;
+        while (*getter != NULL) {
+            token = (*getter)(stream);
+            if (token)
+                break;
+            ++getter;
         }
 
         if (!token) {
