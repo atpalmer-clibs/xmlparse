@@ -220,7 +220,15 @@ void token_free(Token *self)
 }
 
 typedef struct {
-    enum { CTX_XMLDECL, CTX_TAG, CTX_CONTENT } context;
+    const char *name;
+} ContextType;
+
+static const ContextType CTP_XMLDECL = (ContextType){"XmlDecl"};
+static const ContextType CTP_TAG = (ContextType){"Tag"};
+static const ContextType CTP_CONTENT = (ContextType){"Content"};
+
+typedef struct {
+    const ContextType *context;
 } Context;
 
 int main(void)
@@ -229,19 +237,19 @@ int main(void)
     if (!stream)
         die_FileError(INFILE);
 
-    Context ctx = { CTX_CONTENT };
+    Context ctx = { &CTP_CONTENT };
 
     for (;;) {
         Token *token = NULL;
 
-        if (ctx.context == CTX_CONTENT) {
+        if (ctx.context == &CTP_CONTENT) {
             if (!token)
                 token = token_next_tagstart_symbol(stream);
             if (!token)
                 token = token_next_whitespace(stream);
             if (!token)
                 token = token_next_content(stream);
-        } else if (ctx.context == CTX_XMLDECL) {
+        } else if (ctx.context == &CTP_XMLDECL) {
             if (!token)
                 token = token_next_tag_symbol(stream);
             if (!token)
@@ -250,7 +258,7 @@ int main(void)
                 token = token_next_name(stream);
             if (!token)
                 token = token_next_quoted_value(stream);
-        } else if (ctx.context == CTX_TAG) {
+        } else if (ctx.context == &CTP_TAG) {
             if (!token)
                 token = token_next_tag_symbol(stream);
             if (!token)
@@ -269,16 +277,16 @@ int main(void)
             break;
         }
 
-        printf("[%s] Token: <%s>: '%s' [len: %zu]\n", (ctx.context ? "CONTENT" : "TAG"), token->type->name, token->value, token->len);
+        printf("[%s] Token: <%s>: '%s' [len: %zu]\n", ctx.context->name, token->type->name, token->value, token->len);
 
         if (token->type == &TokenType_TAGSTART_SYMBOL) {
-            ctx.context = CTX_TAG;
+            ctx.context = &CTP_TAG;
         }
         else if (token->type == &TokenType_XMLDECLSTART_SYMBOL) {
-            ctx.context = CTX_XMLDECL;
+            ctx.context = &CTP_XMLDECL;
         }
         else if (token->type == &TokenType_SYMBOL && strncmp(token->value, ">", token->len) == 0) {
-            ctx.context = CTX_CONTENT;
+            ctx.context = &CTP_CONTENT;
         }
 
         token_free(token);
