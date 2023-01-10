@@ -13,21 +13,35 @@ void die_FileError(const char *fname)
     exit(-1);
 }
 
+typedef struct _Token Token;
+
+typedef Token *(*TokenGetter)(FILE *stream);
+
 typedef struct {
     const char *name;
-} TokenType;
+    TokenGetter *funcs;
+} ContextType;
 
-static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace"};
-static const TokenType TokenType_SYMBOL = (TokenType){"Symbol"};
-static const TokenType TokenType_TAGSTART_SYMBOL = (TokenType){"TagStartSymbol"};
-static const TokenType TokenType_TAGEND_SYMBOL = (TokenType){"TagEndSymbol"};
-static const TokenType TokenType_XMLDECLSTART_SYMBOL = (TokenType){"XmlDeclStartSymbol"};
-static const TokenType TokenType_XMLDECLEND_SYMBOL = (TokenType){"XmlDeclEndSymbol"};
-static const TokenType TokenType_NAME = (TokenType){"Name"};
-static const TokenType TokenType_QUOTED_VALUE = (TokenType){"QuotedValue"};
-static const TokenType TokenType_CONTENT = (TokenType){"Content"};
+extern const ContextType CTP_XMLDECL;
+extern const ContextType CTP_TAG;
+extern const ContextType CTP_CONTENT;
 
 typedef struct {
+    const char *name;
+    const ContextType *newcontext;
+} TokenType;
+
+static const TokenType TokenType_WHITESPACE = (TokenType){"Whitespace", NULL};
+static const TokenType TokenType_TAGSTART_SYMBOL = (TokenType){"TagStartSymbol", &CTP_TAG};
+static const TokenType TokenType_TAGEND_SYMBOL = (TokenType){"TagEndSymbol", &CTP_CONTENT};
+static const TokenType TokenType_XMLDECLSTART_SYMBOL = (TokenType){"XmlDeclStartSymbol", &CTP_XMLDECL};
+static const TokenType TokenType_XMLDECLEND_SYMBOL = (TokenType){"XmlDeclEndSymbol", &CTP_CONTENT};
+static const TokenType TokenType_NAME = (TokenType){"Name", NULL};
+static const TokenType TokenType_SYMBOL = (TokenType){"Symbol", NULL};
+static const TokenType TokenType_QUOTED_VALUE = (TokenType){"QuotedValue", NULL};
+static const TokenType TokenType_CONTENT = (TokenType){"Content", NULL};
+
+typedef struct _Token {
     const TokenType *type;  /* pointer is not owned */
     size_t len;
     char value[];
@@ -231,8 +245,6 @@ void token_free(Token *self)
         free(self);
 }
 
-typedef Token *(*TokenGetter)(FILE *stream);
-
 TokenGetter XmlDecl_Funcs[] = {
     token_next_xmldeclend_symbol,
     token_next_whitespace,
@@ -258,14 +270,9 @@ TokenGetter Content_Funcs[] = {
     NULL,
 };
 
-typedef struct {
-    const char *name;
-    TokenGetter *funcs;
-} ContextType;
-
-static const ContextType CTP_XMLDECL = (ContextType){"XmlDecl", XmlDecl_Funcs};
-static const ContextType CTP_TAG = (ContextType){"Tag", Tag_Funcs};
-static const ContextType CTP_CONTENT = (ContextType){"Content", Content_Funcs};
+const ContextType CTP_XMLDECL = (ContextType){"XmlDecl", XmlDecl_Funcs};
+const ContextType CTP_TAG = (ContextType){"Tag", Tag_Funcs};
+const ContextType CTP_CONTENT = (ContextType){"Content", Content_Funcs};
 
 typedef struct {
     const ContextType *context;
@@ -300,17 +307,8 @@ int main(void)
 
         printf("[%s] Token: <%s>: '%s' [len: %zu]\n", ctx.context->name, token->type->name, token->value, token->len);
 
-        if (token->type == &TokenType_TAGSTART_SYMBOL) {
-            ctx.context = &CTP_TAG;
-        }
-        else if (token->type == &TokenType_XMLDECLSTART_SYMBOL) {
-            ctx.context = &CTP_XMLDECL;
-        }
-        else if (token->type == &TokenType_XMLDECLEND_SYMBOL) {
-            ctx.context = &CTP_CONTENT;
-        }
-        else if (token->type == &TokenType_TAGEND_SYMBOL) {
-            ctx.context = &CTP_CONTENT;
+        if (token->type->newcontext) {
+            ctx.context = token->type->newcontext;
         }
 
         token_free(token);
