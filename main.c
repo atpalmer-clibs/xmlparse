@@ -86,7 +86,7 @@ Token *token_next_whitespace(FILE *stream)
 
     size_t bytes = 0;
 
-    for (;;) {
+    while (bytes < MAXLEN) {
         buff[bytes] = stream_expect_char_in(stream, TOKEN_WHITESPACE);
         if (!buff[bytes])
             break;
