@@ -15,16 +15,22 @@ void die_FileError(const char *fname)
 
 char stream_expect_char_in(FILE *stream, const char *chars)
 {
-    char buff;
-    size_t bytes_read = fread(&buff, 1, 1, stream);
-    if (bytes_read != 1)
-        goto fail;  /* IO error */
+    char buff = fgetc(stream);
+    if (buff < 0)
+        goto fail;
     if (strchr(chars, buff))
         return buff;
 
 fail:
-    fseek(stream, -bytes_read, SEEK_CUR);
+    ungetc(buff, stream);
     return '\0';
+}
+
+int stream_peek(FILE *stream)
+{
+    int c = fgetc(stream);
+    ungetc(c, stream);
+    return c;
 }
 
 typedef struct _Token Token;
@@ -149,11 +155,13 @@ Token *token_next_name(FILE *stream)
     size_t bytes = 0;
 
     while (bytes < MAXLEN) {
-        buff[bytes] = stream_expect_char_in(stream, NAME_CHARS);
-        if (!buff[bytes])
+        int c = stream_expect_char_in(stream, NAME_CHARS);
+        if (!c)
             break;
-        ++bytes;
+        buff[bytes++] = c;
     }
+
+    buff[bytes] = '\0';
 
     if (bytes > 0)
         return token_new(&TokenType_NAME, bytes, buff);
@@ -168,30 +176,30 @@ Token *token_next_quoted_value(FILE *stream)
 
     size_t bytes = 0;
 
-    size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
-    if (buff[bytes] != '"') {
-        fseek(stream, -1, SEEK_CUR);
+    int c = stream_peek(stream);
+    if (c != '"')
         goto done;
-    }
-    bytes += bytes_read;
+    buff[bytes++] = stream_expect_char_in(stream, "\"");
 
     while (bytes < MAXLEN) {
-        bytes_read = fread(&buff[bytes], 1, 1, stream);
-        if (feof(stream))
+        int c = fgetc(stream);
+        if (c == EOF)
             goto done;
-        if (buff[bytes] == '\\' && bytes < MAXLEN) {
-            bytes += bytes_read;
-            bytes_read = fread(&buff[bytes], 1, 1, stream);
-            if (feof(stream))
+        if (c == '\\') {
+            buff[bytes++] = c;
+            if (bytes == MAXLEN)
                 goto done;
-            bytes += bytes_read;
+            c = fgetc(stream);
+            if (c == EOF)
+                goto done;
+            buff[bytes++] = c;
             continue;
         }
-        if (buff[bytes] == '"') {
-            bytes += bytes_read;
+        if (c == '"') {
+            buff[bytes++] = c;
             break;
         }
-        bytes += bytes_read;
+        buff[bytes++] = c;
     }
 
 done:
@@ -211,14 +219,14 @@ Token *token_next_content(FILE *stream)
     size_t bytes = 0;
 
     while (bytes < MAXLEN) {
-        size_t bytes_read = fread(&buff[bytes], 1, 1, stream);
-        if (buff[bytes] == '<') {
-            fseek(stream, -1, SEEK_CUR);
+        int c = fgetc(stream);
+        if (c == EOF)
+            goto done;
+        if (c == '<') {
+            ungetc(c, stream);
             goto done;
         }
-        if (feof(stream))
-            goto done;
-        bytes += bytes_read;
+        buff[bytes++] = c;
     }
 
 done:
@@ -289,9 +297,7 @@ int main(void)
         }
 
         if (!token) {
-            int c;
-            fread(&c, 1, 1, stream);
-            fseek(stream, -1, SEEK_CUR);
+            int c = stream_peek(stream);
             printf("TOKEN ERROR: '%c'\n", c);
             break;
         }
