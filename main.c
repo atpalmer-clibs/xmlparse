@@ -181,24 +181,22 @@ Token *token_next_name(FILE *stream)
 {
     static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
 
-    static const size_t MAXLEN = 256;
-    char buff[MAXLEN];
+    Buffer *buff = buffer_new();
 
-    size_t bytes = 0;
-
-    while (bytes < MAXLEN) {
+    for (;;) {
         int c = stream_expect_char_in(stream, NAME_CHARS);
         if (!c)
             break;
-        buff[bytes++] = c;
+        buffer_append(&buff, c);
     }
 
-    buff[bytes] = '\0';
+    Token *result = buff->len
+        ? token_new(&TokenType_NAME, buff->len, buff->value)
+        : NULL;
 
-    if (bytes > 0)
-        return token_new(&TokenType_NAME, bytes, buff);
-    else
-        return NULL;
+    buffer_destroy(buff);
+
+    return result;
 }
 
 Token *token_next_quoted_value(FILE *stream)
