@@ -117,30 +117,24 @@ Token *token_new(const TokenType *type, size_t len, const char *value)
 
 Token *token_next_whitespace(FILE *stream)
 {
-    static const char TOKEN_WHITESPACE[] = {
-        ' ',
-        '\t',
-        '\r',
-        '\n',
-        '\0',  /* sentinel */
-    };
+    static const char TOKEN_WHITESPACE[] = " \t\r\n";
 
-    static const size_t MAXLEN = 256;
-    char buff[MAXLEN];
+    Buffer *buff = buffer_new();
 
-    size_t bytes = 0;
-
-    while (bytes < MAXLEN) {
-        buff[bytes] = stream_expect_char_in(stream, TOKEN_WHITESPACE);
-        if (!buff[bytes])
+    for (;;) {
+        char c = stream_expect_char_in(stream, TOKEN_WHITESPACE);
+        if (!c)
             break;
-        ++bytes;
+        buffer_append(&buff, c);
     }
 
-    if (bytes > 0)
-        return token_new(&TokenType_WHITESPACE, bytes, buff);
-    else
-        return NULL;
+    Token *result = buff->len
+        ? token_new(&TokenType_WHITESPACE, buff->len, buff->value)
+        : NULL;
+
+    buffer_destroy(buff);
+
+    return result;
 }
 
 Token *token_next_tagstart_symbol(FILE *stream)
