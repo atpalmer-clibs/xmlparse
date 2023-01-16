@@ -19,35 +19,35 @@ typedef struct buffer {
     char value[];
 } Buffer;
 
-Buffer *buffer_new(void)
-{
-    static const size_t CAPINIT = 2;
-    Buffer *new = malloc(sizeof *new + CAPINIT);
-    new->cap = CAPINIT;
-    new->len = 0;
-    new->value[0] = '\0';
-    return new;
-}
-
 void buffer_destroy(Buffer *self)
 {
-    free(self);
+    if (self)
+        free(self);
 }
 
 Buffer *buffer_append(Buffer **self, char c)
 {
-    size_t newlen = (*self)->len + 1;
-    while ((*self)->cap < newlen + 1) {
-        size_t newcap = (*self)->cap * 2;
-        Buffer *tmp = realloc(*self, sizeof *tmp + newcap);
-        if (!tmp)
-            return NULL;
-        tmp->cap = newcap;
-        *self = tmp;
+    if (!*self) {
+        *self = malloc(sizeof(Buffer) + 2);
+        (*self)->cap = 2;
+        (*self)->len = 1;
+        (*self)->value[0] = c;
+        (*self)->value[1] = '\0';
+    } else {
+        size_t newlen = (*self)->len + 1;
+        while ((*self)->cap < newlen + 1) {
+            size_t newcap = (*self)->cap * 2;
+            Buffer *tmp = realloc(*self, sizeof *tmp + newcap);
+            if (!tmp)
+                return NULL;
+            tmp->cap = newcap;
+            *self = tmp;
+        }
+        (*self)->value[(*self)->len] = c;
+        (*self)->value[(*self)->len + 1] = '\0';
+        (*self)->len = newlen;
     }
-    (*self)->value[(*self)->len] = c;
-    (*self)->value[(*self)->len + 1] = '\0';
-    (*self)->len = newlen;
+
     return *self;
 }
 
@@ -119,7 +119,7 @@ Token *token_next_whitespace(FILE *stream)
 {
     static const char TOKEN_WHITESPACE[] = " \t\r\n";
 
-    Buffer *buff = buffer_new();
+    Buffer *buff = NULL;
 
     for (;;) {
         char c = stream_expect_char_in(stream, TOKEN_WHITESPACE);
@@ -128,7 +128,7 @@ Token *token_next_whitespace(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff->len
+    Token *result = buff
         ? token_new(&TokenType_WHITESPACE, buff->len, buff->value)
         : NULL;
 
@@ -181,7 +181,7 @@ Token *token_next_name(FILE *stream)
 {
     static const char NAME_CHARS[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
 
-    Buffer *buff = buffer_new();
+    Buffer *buff = NULL;
 
     for (;;) {
         int c = stream_expect_char_in(stream, NAME_CHARS);
@@ -190,7 +190,7 @@ Token *token_next_name(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff->len
+    Token *result = buff
         ? token_new(&TokenType_NAME, buff->len, buff->value)
         : NULL;
 
@@ -201,13 +201,12 @@ Token *token_next_name(FILE *stream)
 
 Token *token_next_quoted_value(FILE *stream)
 {
-    Buffer *buff = buffer_new();
+    Buffer *buff = NULL;
 
     int c = stream_peek(stream);
-    if (c != '"') {
-        buffer_destroy(buff);
+    if (c != '"')
         return NULL;
-    }
+
     stream_expect_char_in(stream, "\"");
     buffer_append(&buff, c);
 
@@ -230,7 +229,7 @@ Token *token_next_quoted_value(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff->len
+    Token *result = buff
         ? token_new(&TokenType_QUOTED_VALUE, buff->len, buff->value)
         : NULL;
 
@@ -241,7 +240,7 @@ Token *token_next_quoted_value(FILE *stream)
 
 Token *token_next_content(FILE *stream)
 {
-    Buffer *buff = buffer_new();
+    Buffer *buff = NULL;
 
     for (;;) {
         int c = fgetc(stream);
@@ -254,7 +253,7 @@ Token *token_next_content(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff->len
+    Token *result = buff
         ? token_new(&TokenType_CONTENT, buff->len, buff->value)
         : NULL;
 
