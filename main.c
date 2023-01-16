@@ -283,7 +283,20 @@ const ContextType CTP_CONTENT = (ContextType){"Content", Content_Funcs};
 
 typedef struct {
     const ContextType *context;
+    FILE *stream;
 } Context;
+
+Token *next_token(Context *ctx)
+{
+    TokenGetter *getter = ctx->context->funcs;
+    while (*getter != NULL) {
+        Token *token = (*getter)(ctx->stream);
+        if (token)
+            return token;
+        ++getter;
+    }
+    return NULL;
+}
 
 int main(void)
 {
@@ -291,18 +304,13 @@ int main(void)
     if (!stream)
         die_FileError(INFILE);
 
-    Context ctx = { &CTP_CONTENT };
+    Context ctx = {
+        .context = &CTP_CONTENT,
+        .stream = stream,
+    };
 
     for (;;) {
-        Token *token = NULL;
-
-        TokenGetter *getter = ctx.context->funcs;
-        while (*getter != NULL) {
-            token = (*getter)(stream);
-            if (token)
-                break;
-            ++getter;
-        }
+        Token *token = next_token(&ctx);
 
         if (!token) {
             int c = stream_peek(stream);
