@@ -243,29 +243,26 @@ done:
 
 Token *token_next_content(FILE *stream)
 {
-    static const size_t MAXLEN = 256;
-    char buff[MAXLEN];
+    Buffer *buff = buffer_new();
 
-    size_t bytes = 0;
-
-    while (bytes < MAXLEN) {
+    for (;;) {
         int c = fgetc(stream);
         if (c == EOF)
-            goto done;
+            break;
         if (c == '<') {
             ungetc(c, stream);
-            goto done;
+            break;
         }
-        buff[bytes++] = c;
+        buffer_append(&buff, c);
     }
 
-done:
-    buff[bytes] = '\0';
+    Token *result = buff->len
+        ? token_new(&TokenType_CONTENT, buff->len, buff->value)
+        : NULL;
 
-    if (bytes > 0)
-        return token_new(&TokenType_CONTENT, bytes, buff);
-    else
-        return NULL;
+    buffer_destroy(buff);
+
+    return result;
 }
 
 void token_free(Token *self)
