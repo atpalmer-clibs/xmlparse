@@ -13,6 +13,44 @@ void die_FileError(const char *fname)
     exit(-1);
 }
 
+typedef struct buffer {
+    size_t cap;
+    size_t len;
+    char value[];
+} Buffer;
+
+Buffer *buffer_new(void)
+{
+    static const size_t CAPINIT = 2;
+    Buffer *new = malloc(sizeof *new + CAPINIT);
+    new->cap = CAPINIT;
+    new->len = 0;
+    new->value[0] = '\0';
+    return new;
+}
+
+void buffer_destroy(Buffer *self)
+{
+    free(self);
+}
+
+Buffer *buffer_append(Buffer **self, char c)
+{
+    size_t newlen = (*self)->len + 1;
+    while ((*self)->cap < newlen + 1) {
+        size_t newcap = (*self)->cap * 2;
+        Buffer *tmp = realloc(*self, sizeof *tmp + newcap);
+        if (!tmp)
+            return NULL;
+        tmp->cap = newcap;
+        *self = tmp;
+    }
+    (*self)->value[(*self)->len] = c;
+    (*self)->value[(*self)->len + 1] = '\0';
+    (*self)->len = newlen;
+    return *self;
+}
+
 char stream_expect_char_in(FILE *stream, const char *chars)
 {
     char buff = fgetc(stream);
