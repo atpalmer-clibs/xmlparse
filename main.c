@@ -21,8 +21,7 @@ typedef struct buffer {
 
 void buffer_destroy(Buffer *self)
 {
-    if (self)
-        free(self);
+    free(self);
 }
 
 Buffer *buffer_append(Buffer **self, char c)
@@ -115,6 +114,15 @@ Token *token_new(const TokenType *type, size_t len, const char *value)
     return new;
 }
 
+Token *token_new_from_buffer_destroy(const TokenType *type, Buffer *buff)
+{
+    if (!buff)
+        return NULL;
+    Token *result = token_new(type, buff->len, buff->value);
+    buffer_destroy(buff);
+    return result;
+}
+
 Token *token_next_whitespace(FILE *stream)
 {
     static const char TOKEN_WHITESPACE[] = " \t\r\n";
@@ -128,13 +136,7 @@ Token *token_next_whitespace(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff
-        ? token_new(&TokenType_WHITESPACE, buff->len, buff->value)
-        : NULL;
-
-    buffer_destroy(buff);
-
-    return result;
+    return token_new_from_buffer_destroy(&TokenType_WHITESPACE, buff);
 }
 
 Token *token_next_tagstart_symbol(FILE *stream)
@@ -190,13 +192,7 @@ Token *token_next_name(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff
-        ? token_new(&TokenType_NAME, buff->len, buff->value)
-        : NULL;
-
-    buffer_destroy(buff);
-
-    return result;
+    return token_new_from_buffer_destroy(&TokenType_NAME, buff);
 }
 
 Token *token_next_quoted_value(FILE *stream)
@@ -229,13 +225,7 @@ Token *token_next_quoted_value(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff
-        ? token_new(&TokenType_QUOTED_VALUE, buff->len, buff->value)
-        : NULL;
-
-    buffer_destroy(buff);
-
-    return result;
+    return token_new_from_buffer_destroy(&TokenType_QUOTED_VALUE, buff);
 }
 
 Token *token_next_content(FILE *stream)
@@ -253,13 +243,7 @@ Token *token_next_content(FILE *stream)
         buffer_append(&buff, c);
     }
 
-    Token *result = buff
-        ? token_new(&TokenType_CONTENT, buff->len, buff->value)
-        : NULL;
-
-    buffer_destroy(buff);
-
-    return result;
+    return token_new_from_buffer_destroy(&TokenType_CONTENT, buff);
 }
 
 void token_free(Token *self)
