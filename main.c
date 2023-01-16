@@ -201,44 +201,42 @@ Token *token_next_name(FILE *stream)
 
 Token *token_next_quoted_value(FILE *stream)
 {
-    static const size_t MAXLEN = 256;
-    char buff[MAXLEN];
-
-    size_t bytes = 0;
+    Buffer *buff = buffer_new();
 
     int c = stream_peek(stream);
-    if (c != '"')
-        goto done;
-    buff[bytes++] = stream_expect_char_in(stream, "\"");
+    if (c != '"') {
+        buffer_destroy(buff);
+        return NULL;
+    }
+    stream_expect_char_in(stream, "\"");
+    buffer_append(&buff, c);
 
-    while (bytes < MAXLEN) {
+    for (;;) {
         int c = fgetc(stream);
         if (c == EOF)
-            goto done;
+            break;
         if (c == '\\') {
-            buff[bytes++] = c;
-            if (bytes == MAXLEN)
-                goto done;
+            buffer_append(&buff, c);
             c = fgetc(stream);
             if (c == EOF)
-                goto done;
-            buff[bytes++] = c;
+                break;
+            buffer_append(&buff, c);
             continue;
         }
         if (c == '"') {
-            buff[bytes++] = c;
+            buffer_append(&buff, c);
             break;
         }
-        buff[bytes++] = c;
+        buffer_append(&buff, c);
     }
 
-done:
-    buff[bytes] = '\0';
+    Token *result = buff->len
+        ? token_new(&TokenType_QUOTED_VALUE, buff->len, buff->value)
+        : NULL;
 
-    if (bytes > 0)
-        return token_new(&TokenType_QUOTED_VALUE, bytes, buff);
-    else
-        return NULL;
+    buffer_destroy(buff);
+
+    return result;
 }
 
 Token *token_next_content(FILE *stream)
