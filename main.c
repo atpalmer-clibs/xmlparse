@@ -286,6 +286,29 @@ typedef struct {
     FILE *stream;
 } Context;
 
+Context *context_from_filename(const char *fn)
+{
+    FILE *stream = fopen(fn, "r");
+    if (!stream)
+        die_FileError(fn);
+
+    Context *new = malloc(sizeof *new);
+    new->context = &CTP_CONTENT;
+    new->stream = stream;
+    return new;
+}
+
+void context_destroy(Context *self)
+{
+    fclose(self->stream);
+    free(self);
+}
+
+int context_done(Context *self)
+{
+    return feof(self->stream);
+}
+
 Token *next_token(Context *ctx)
 {
     TokenGetter *getter = ctx->context->funcs;
@@ -295,42 +318,35 @@ Token *next_token(Context *ctx)
             return token;
         ++getter;
     }
+
+    int c = stream_peek(ctx->stream);
+    fprintf(stderr, "TOKEN ERROR: '%c'\n", c);
     return NULL;
 }
 
 int main(void)
 {
-    FILE *stream = fopen(INFILE, "r");
-    if (!stream)
-        die_FileError(INFILE);
+    Context *ctx = context_from_filename(INFILE);
 
-    Context ctx = {
-        .context = &CTP_CONTENT,
-        .stream = stream,
-    };
-
-    for (;;) {
-        Token *token = next_token(&ctx);
-
-        if (!token) {
-            int c = stream_peek(stream);
-            printf("TOKEN ERROR: '%c'\n", c);
+    while (!context_done(ctx)) {
+        Token *token = next_token(ctx);
+        if (!token)
             break;
-        }
 
-        printf("[%s] Token: <%s>: '%s' [len: %zu]\n", ctx.context->name, token->type->name, token->value, token->len);
+        printf("[%s] Token: <%s>: '%s' [len: %zu]\n",
+            ctx->context->name,
+            token->type->name,
+            token->value,
+            token->len);
 
         if (token->type->newcontext) {
-            ctx.context = token->type->newcontext;
+            ctx->context = token->type->newcontext;
         }
 
         token_free(token);
-
-        if (feof(stream))
-            break;
     }
 
-    fclose(stream);
+    context_destroy(ctx);
     printf("DONE\n");
 }
 
