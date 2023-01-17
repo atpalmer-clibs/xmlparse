@@ -246,10 +246,13 @@ Token *token_next_content(FILE *stream)
     return token_new_from_buffer_destroy(&TokenType_CONTENT, buff);
 }
 
-void token_free(Token *self)
+void token_free(Token **self)
 {
-    if (self)
-        free(self);
+    if (!*self)
+        return;
+
+    free(*self);
+    *self = NULL;
 }
 
 TokenGetter XmlDecl_Funcs[] = {
@@ -284,6 +287,7 @@ const ContextType CTP_CONTENT = (ContextType){"Content", Content_Funcs};
 typedef struct {
     const ContextType *context;
     FILE *stream;
+    Token *token;
 } Context;
 
 Context *context_from_filename(const char *fn)
@@ -295,6 +299,7 @@ Context *context_from_filename(const char *fn)
     Context *new = malloc(sizeof *new);
     new->context = &CTP_CONTENT;
     new->stream = stream;
+    new->token = NULL;
     return new;
 }
 
@@ -309,13 +314,30 @@ int context_done(Context *self)
     return feof(self->stream);
 }
 
+const ContextType *_next_contexttype(const Context *ctx)
+{
+    if (!ctx->token)
+        return &CTP_CONTENT;
+    if (!ctx->token->type->newcontext)
+        return ctx->context;
+
+    return ctx->token->type->newcontext;
+}
+
 Token *next_token(Context *ctx)
 {
+    if (ctx->token) {
+        ctx->context = _next_contexttype(ctx);
+        token_free(&ctx->token);
+    }
+
     TokenGetter *getter = ctx->context->funcs;
     while (*getter != NULL) {
         Token *token = (*getter)(ctx->stream);
-        if (token)
+        if (token) {
+            ctx->token = token;
             return token;
+        }
         ++getter;
     }
 
@@ -338,12 +360,6 @@ int main(void)
             token->type->name,
             token->value,
             token->len);
-
-        if (token->type->newcontext) {
-            ctx->context = token->type->newcontext;
-        }
-
-        token_free(token);
     }
 
     context_destroy(ctx);
