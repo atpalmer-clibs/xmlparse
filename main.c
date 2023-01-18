@@ -290,7 +290,7 @@ typedef struct {
     Token *token;
 } Context;
 
-Context *context_from_filename(const char *fn)
+Context *ctx_from_filename(const char *fn)
 {
     FILE *stream = fopen(fn, "r");
     if (!stream)
@@ -303,13 +303,13 @@ Context *context_from_filename(const char *fn)
     return new;
 }
 
-void context_destroy(Context *self)
+void ctx_destroy(Context *self)
 {
     fclose(self->stream);
     free(self);
 }
 
-int context_done(Context *self)
+int ctx_is_done(Context *self)
 {
     return feof(self->stream);
 }
@@ -324,7 +324,7 @@ const ContextType *_next_contexttype(const Context *ctx)
     return ctx->token->type->newcontext;
 }
 
-Token *next_token(Context *ctx)
+Token *ctx_next_token(Context *ctx)
 {
     if (ctx->token) {
         ctx->context = _next_contexttype(ctx);
@@ -348,10 +348,10 @@ Token *next_token(Context *ctx)
 
 int main(void)
 {
-    Context *ctx = context_from_filename(INFILE);
+    Context *ctx = ctx_from_filename(INFILE);
 
-    while (!context_done(ctx)) {
-        Token *token = next_token(ctx);
+    while (!ctx_is_done(ctx)) {
+        Token *token = ctx_next_token(ctx);
         if (!token)
             break;
 
@@ -362,7 +362,7 @@ int main(void)
             token->len);
     }
 
-    context_destroy(ctx);
+    ctx_destroy(ctx);
     printf("DONE\n");
 }
 
