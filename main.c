@@ -341,17 +341,229 @@ Token *ctx_peek_token(Context *ctx)
 
 Token *ctx_next_token(Context *ctx)
 {
+    Token *token = ctx_peek_token(ctx);
     if (ctx->token) {
         if (ctx->token->type->newcontext)
             ctx->context = ctx->token->type->newcontext;
         ctx->token = NULL;
     }
-    return ctx_peek_token(ctx);
+    return token;
+}
+
+int ctx_token_try(Context *ctx, const TokenType *type)
+{
+    Token *token = ctx_peek_token(ctx);
+    return token->type == type;
+}
+
+void ctx_token_expect_or_die(Context *ctx, const TokenType *type)
+{
+    Token *token = ctx_next_token(ctx);
+    if (token->type != type) {
+        fprintf(stderr, "Token Expect Error: Expected: %s; Found: %s\n",
+            type->name,
+            token->type->name);
+        exit(-1);
+    }
+}
+
+typedef enum {
+    XNT_DOC,
+    XNT_DECL,
+} XmlNodeType;
+
+typedef struct {
+    XmlNodeType type;
+} XmlNode;
+
+typedef struct {
+    XmlNodeType type;
+    XmlNode *xmldecl;
+} XmlNode_Document;
+
+typedef struct {
+    XmlNodeType type;
+    char *version;
+    char *encoding;
+    /* TODO: misc. attributes */
+} XmlNode_XmlDecl;
+
+XmlNode *xmlnode_new_document(void)
+{
+    XmlNode_Document *new = malloc(sizeof *new);
+    new->type = XNT_DOC;
+    new->xmldecl = NULL;
+    return (XmlNode *)new;
+}
+
+XmlNode *xmlnode_new_xmldecl(void)
+{
+    XmlNode_XmlDecl *new = malloc(sizeof *new);
+    new->type = XNT_DECL;
+    new->version = NULL;
+    new->encoding = NULL;
+    return (XmlNode *)new;
+}
+
+void xmlnode_destroy(XmlNode *self);
+
+void xmlnode_destroy_xmldoc(XmlNode_Document *self)
+{
+    if (self->xmldecl)
+        xmlnode_destroy(self->xmldecl);
+    free(self);
+}
+
+void xmlnode_destroy_xmldecl(XmlNode_XmlDecl *self)
+{
+    if (self->version)
+        free(self->version);
+    if (self->encoding)
+        free(self->encoding);
+    free(self);
+}
+
+void xmlnode_destroy(XmlNode *self)
+{
+    switch (self->type) {
+    case XNT_DOC:
+        xmlnode_destroy_xmldoc((XmlNode_Document *)self);
+        break;
+    case XNT_DECL:
+        xmlnode_destroy_xmldecl((XmlNode_XmlDecl *)self);
+        break;
+    default:
+        fprintf(stderr, "Unhandled XmlNode type: %d\n", self->type);
+        exit(-1);
+    }
+}
+
+XmlNode *xml_parse_xmldecl(Context *ctx)
+{
+    XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
+
+    Token *token = ctx_next_token(ctx);
+    if (token->type != &TokenType_NAME) {
+        fprintf(stderr, "Expecting NAME token. Found: \"%s\". XML decl must begin <?xml\n", token->type->name);
+        exit(-1);
+    }
+    if (strcmp(token->value, "xml") != 0) {
+        fprintf(stderr, "Expecting \"xml\". XML decl must begin <?xml\n");
+        exit(-1);
+    }
+
+    for (;;) {
+        Token *token = ctx_next_token(ctx);
+
+        if (token->type == &TokenType_XMLDECLEND_SYMBOL) {
+            break;
+        }
+
+        if (token->type == &TokenType_NAME) {
+            if (strcmp(token->value, "encoding") != 0) {
+                Token *token;
+
+                token = ctx_next_token(ctx);
+                if (token->type != &TokenType_SYMBOL) {
+                    fprintf(stderr, "XML encoding must have a value.\n");
+                    exit(-1);
+                }
+                if (strcmp(token->value, "=") != 0) {
+                    fprintf(stderr, "XML encoding must have a value.\n");
+                    exit(-1);
+                }
+
+                token = ctx_next_token(ctx);
+                if (token->type != &TokenType_QUOTED_VALUE) {
+                    fprintf(stderr, "XML encoding must have a value.\n");
+                    exit(-1);
+                }
+
+                /* ASSIGN ENCODING */
+                new->encoding = strdup(token->value);
+            }
+
+            if (strcmp(token->value, "version") != 0) {
+                Token *token;
+
+                token = ctx_next_token(ctx);
+                if (token->type != &TokenType_SYMBOL) {
+                    fprintf(stderr, "XML version must have a value.\n");
+                    exit(-1);
+                }
+                if (strcmp(token->value, "=") != 0) {
+                    fprintf(stderr, "XML version must have a value.\n");
+                    exit(-1);
+                }
+
+                token = ctx_next_token(ctx);
+                if (token->type != &TokenType_QUOTED_VALUE) {
+                    fprintf(stderr, "XML version must have a value.\n");
+                    exit(-1);
+                }
+
+                /* ASSIGN VERSION */
+                new->version = strdup(token->value);
+            }
+        }
+    }
+
+    return (XmlNode *)new;
+}
+
+void xml_parse_skip_whitespace(Context *ctx)
+{
+    while (!ctx_is_done(ctx)) {
+        if (!ctx_token_try(ctx, &TokenType_WHITESPACE))
+            return;
+        ctx_token_expect_or_die(ctx, &TokenType_WHITESPACE);
+    }
+}
+
+XmlNode_Document *xml_parse_document(Context *ctx)
+{
+    XmlNode_Document *doc = (XmlNode_Document *)xmlnode_new_document();
+
+    xml_parse_skip_whitespace(ctx);
+
+    Token *token = ctx_next_token(ctx);
+    if (!token) {
+        fprintf(stderr, "Error: No tokens in document.\n");
+        exit(-1);
+    }
+    if (token->type != &TokenType_XMLDECLSTART_SYMBOL) {
+        fprintf(stderr, "Error: Document must start with XML declaration.\n");
+        exit(-1);
+    }
+
+    XmlNode *xmldecl = xml_parse_xmldecl(ctx);
+
+    doc->xmldecl = xmldecl;
+
+    return doc;
+}
+
+void xml_print_decl(XmlNode_XmlDecl *decl)
+{
+    printf("XmlNode_XmlDecl: Version: '%s'; Encoding: '%s'\n",
+        decl->version,
+        decl->encoding);
+
+    /* TODO: misc attributes */
+}
+
+void xml_print_document(XmlNode_Document *doc)
+{
+    xml_print_decl((XmlNode_XmlDecl *)doc->xmldecl);
 }
 
 int main(void)
 {
     Context *ctx = ctx_from_filename(INFILE);
+
+    XmlNode_Document *document = xml_parse_document(ctx);
+    xml_print_document(document);
+    xmlnode_destroy((XmlNode *)document);
 
     while (!ctx_is_done(ctx)) {
         Token *token = ctx_next_token(ctx);
