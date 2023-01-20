@@ -314,36 +314,39 @@ int ctx_is_done(Context *self)
     return feof(self->stream);
 }
 
-const ContextType *_next_contexttype(const Context *ctx)
+Token *ctx_peek_token(Context *ctx)
 {
-    if (!ctx->token)
-        return &CTP_CONTENT;
-    if (!ctx->token->type->newcontext)
-        return ctx->context;
+    if (!ctx->token) {
+        TokenGetter *getter = ctx->context->funcs;
+        while (*getter != NULL) {
+            Token *token = (*getter)(ctx->stream);
+            if (token) {
+                if (ctx->token)
+                    token_free(&ctx->token);
+                ctx->token = token;
 
-    return ctx->token->type->newcontext;
+                if (!ctx->token) {
+                    int c = stream_peek(ctx->stream);
+                    fprintf(stderr, "TOKEN ERROR: '%c'\n", c);
+                    exit(-1);
+                }
+
+                break;
+            }
+            ++getter;
+        }
+    }
+    return ctx->token;
 }
 
 Token *ctx_next_token(Context *ctx)
 {
     if (ctx->token) {
-        ctx->context = _next_contexttype(ctx);
-        token_free(&ctx->token);
+        if (ctx->token->type->newcontext)
+            ctx->context = ctx->token->type->newcontext;
+        ctx->token = NULL;
     }
-
-    TokenGetter *getter = ctx->context->funcs;
-    while (*getter != NULL) {
-        Token *token = (*getter)(ctx->stream);
-        if (token) {
-            ctx->token = token;
-            return token;
-        }
-        ++getter;
-    }
-
-    int c = stream_peek(ctx->stream);
-    fprintf(stderr, "TOKEN ERROR: '%c'\n", c);
-    return NULL;
+    return ctx_peek_token(ctx);
 }
 
 int main(void)
