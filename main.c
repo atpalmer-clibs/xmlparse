@@ -472,11 +472,10 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
     xml_expect_NAME(ctx, "xml");
 
     for (;;) {
-        Token *token = ctx_next_token(ctx);
-
-        if (token->type == &TokenType_XMLDECLEND_SYMBOL) {
+        if (ctx_token_try(ctx, &TokenType_XMLDECLEND_SYMBOL))
             break;
-        }
+
+        Token *token = ctx_next_token(ctx);
 
         if (token->type == &TokenType_NAME) {
             if (strcmp(token->value, "encoding") != 0) {
@@ -526,6 +525,8 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
             }
         }
     }
+
+    ctx_token_expect_or_die(ctx, &TokenType_XMLDECLEND_SYMBOL);
 
     return (XmlNode *)new;
 }
