@@ -486,10 +486,15 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
             break;
 
         xml_parse_skip_whitespace(ctx);
-        Token *token = ctx_token_expect_or_die(ctx, &TokenType_NAME);
+        Token *token = ctx_peek_token(ctx);
+
+        if (!ctx_token_try(ctx, &TokenType_NAME))
+            ctx_token_expect_or_die(ctx, &TokenType_NAME);  /* TODO: we know we're dying */
 
         if (strcmp(token->value, "encoding") != 0) {
             Token *token;
+
+            ctx_token_expect_or_die(ctx, &TokenType_NAME);
 
             token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
             if (strcmp(token->value, "=") != 0) {
@@ -504,6 +509,8 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
 
         if (strcmp(token->value, "version") != 0) {
             Token *token;
+
+            ctx_token_expect_or_die(ctx, &TokenType_NAME);
 
             token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
             if (strcmp(token->value, "=") != 0) {
