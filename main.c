@@ -476,13 +476,11 @@ void xml_parse_skip_whitespace(Context *ctx)
 
 Token *xml_try_parse_attribute(Context *ctx, const char *key)
 {
-    /* TODO: cleanup */
     Token *token;
 
-    if (!ctx_token_try(ctx, &TokenType_NAME))
+    token = ctx_token_try(ctx, &TokenType_NAME);
+    if (!token)
         return NULL;
-
-    token = ctx_peek_token(ctx);
     if (strcmp(token->value, key) != 0)
         return NULL;
     ctx_token_expect_or_die(ctx, &TokenType_NAME);
