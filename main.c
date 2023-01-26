@@ -485,7 +485,7 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
 
             token = ctx_next_token(ctx);
             if (token->type != &TokenType_SYMBOL) {
-                fprintf(stderr, "XML encoding must have a value.\n");
+                fprintf(stderr, "Expected: %s. Found: %s\n", TokenType_SYMBOL.name, token->type->name);
                 exit(-1);
             }
             if (strcmp(token->value, "=") != 0) {
@@ -495,7 +495,7 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
 
             token = ctx_next_token(ctx);
             if (token->type != &TokenType_QUOTED_VALUE) {
-                fprintf(stderr, "XML encoding must have a value.\n");
+                fprintf(stderr, "Expected: %s. Found: %s\n", TokenType_QUOTED_VALUE.name, token->type->name);
                 exit(-1);
             }
 
