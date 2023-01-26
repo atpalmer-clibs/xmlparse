@@ -438,12 +438,9 @@ void xmlnode_destroy(XmlNode *self)
     }
 }
 
-XmlNode *xml_parse_xmldecl(Context *ctx)
+void xml_expect_XMLDECLSTART(Context *ctx)
 {
-    XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
-    Token *token;
-
-    token = ctx_next_token(ctx);
+    Token *token = ctx_next_token(ctx);
     if (!token) {
         fprintf(stderr, "Error: No tokens in document.\n");
         exit(-1);
@@ -452,16 +449,27 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
         fprintf(stderr, "Error: Document must start with XML declaration.\n");
         exit(-1);
     }
+}
 
-    token = ctx_next_token(ctx);
+void xml_expect_NAME(Context *ctx, const char *expect)
+{
+    Token *token = ctx_next_token(ctx);
     if (token->type != &TokenType_NAME) {
-        fprintf(stderr, "Expecting NAME token. Found: \"%s\". XML decl must begin <?xml\n", token->type->name);
+        fprintf(stderr, "Expecting NAME token with value \"%s\". Found: \"%s\" token.\n", expect, token->type->name);
         exit(-1);
     }
-    if (strcmp(token->value, "xml") != 0) {
-        fprintf(stderr, "Expecting \"xml\". XML decl must begin <?xml\n");
+    if (strcmp(token->value, expect) != 0) {
+        fprintf(stderr, "Expecting \"%s\". Found: \"%s\"\n", expect, token->value);
         exit(-1);
     }
+}
+
+XmlNode *xml_parse_xmldecl(Context *ctx)
+{
+    XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
+
+    xml_expect_XMLDECLSTART(ctx);
+    xml_expect_NAME(ctx, "xml");
 
     for (;;) {
         Token *token = ctx_next_token(ctx);
