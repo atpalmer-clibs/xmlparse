@@ -368,6 +368,20 @@ Token *ctx_token_expect_or_die(Context *ctx, const TokenType *type)
     return token;
 }
 
+Token *ctx_token_consume(Context *ctx, Token *token)
+{
+    Token *next = ctx_next_token(ctx);
+    if (next != token) {
+        fprintf(stderr, "Token Expect Error: Expected: <%s> \"%s\"; Found: <%s> \"%s\"\n",
+            token->type->name,
+            token->value,
+            next->type->name,
+            next->value);
+        exit(-1);
+    }
+    return next;
+}
+
 typedef enum {
     XNT_DOC,
     XNT_DECL,
@@ -468,9 +482,10 @@ void xml_expect_NAME(Context *ctx, const char *expect)
 void xml_parse_skip_whitespace(Context *ctx)
 {
     while (!ctx_is_done(ctx)) {
-        if (!ctx_token_try(ctx, &TokenType_WHITESPACE))
+        Token *token = ctx_token_try(ctx, &TokenType_WHITESPACE);
+        if (!token)
             return;
-        ctx_token_expect_or_die(ctx, &TokenType_WHITESPACE);
+        ctx_token_consume(ctx, token);
     }
 }
 
@@ -483,7 +498,7 @@ Token *xml_try_parse_attribute(Context *ctx, const char *key)
         return NULL;
     if (strcmp(token->value, key) != 0)
         return NULL;
-    ctx_token_expect_or_die(ctx, &TokenType_NAME);
+    ctx_token_consume(ctx, token);
 
     token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
     if (strcmp(token->value, "=") != 0) {
@@ -504,8 +519,11 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
     for (;;) {
         xml_parse_skip_whitespace(ctx);
 
-        if (ctx_token_try(ctx, &TokenType_XMLDECLEND_SYMBOL))
+        Token *declend = ctx_token_try(ctx, &TokenType_XMLDECLEND_SYMBOL);
+        if (declend) {
+            ctx_token_consume(ctx, declend);
             break;
+        }
 
         Token *encoding = xml_try_parse_attribute(ctx, "encoding");
         if (encoding) {
@@ -525,8 +543,6 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
             token->value);
         exit(-1);
     }
-
-    ctx_token_expect_or_die(ctx, &TokenType_XMLDECLEND_SYMBOL);
 
     return (XmlNode *)new;
 }
