@@ -356,11 +356,11 @@ Token *ctx_token_try(Context *ctx, const TokenType *type)
     return token->type == type ? token : NULL;
 }
 
-Token *ctx_token_expect_or_die(Context *ctx, const TokenType *type)
+Token *ctx_token_ensure_type(Context *ctx, const TokenType *type)
 {
     Token *token = ctx_next_token(ctx);
     if (token->type != type) {
-        fprintf(stderr, "Token Expect Error: Expected: %s; Found: %s\n",
+        fprintf(stderr, "Token Type Error: Expected: %s; Found: %s\n",
             type->name,
             token->type->name);
         exit(-1);
@@ -500,13 +500,13 @@ Token *xml_try_parse_attribute(Context *ctx, const char *key)
         return NULL;
     ctx_token_consume(ctx, token);
 
-    token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
+    token = ctx_token_ensure_type(ctx, &TokenType_SYMBOL);
     if (strcmp(token->value, "=") != 0) {
         fprintf(stderr, "Expected: '=' for attribute \"%s\".\n", key);
         exit(-1);
     }
 
-    return ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
+    return ctx_token_ensure_type(ctx, &TokenType_QUOTED_VALUE);
 }
 
 XmlNode *xml_parse_xmldecl(Context *ctx)
