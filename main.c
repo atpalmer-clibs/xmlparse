@@ -356,7 +356,7 @@ int ctx_token_try(Context *ctx, const TokenType *type)
     return token->type == type;
 }
 
-void ctx_token_expect_or_die(Context *ctx, const TokenType *type)
+Token *ctx_token_expect_or_die(Context *ctx, const TokenType *type)
 {
     Token *token = ctx_next_token(ctx);
     if (token->type != type) {
@@ -365,6 +365,7 @@ void ctx_token_expect_or_die(Context *ctx, const TokenType *type)
             token->type->name);
         exit(-1);
     }
+    return token;
 }
 
 typedef enum {
@@ -464,6 +465,15 @@ void xml_expect_NAME(Context *ctx, const char *expect)
     }
 }
 
+void xml_parse_skip_whitespace(Context *ctx)
+{
+    while (!ctx_is_done(ctx)) {
+        if (!ctx_token_try(ctx, &TokenType_WHITESPACE))
+            return;
+        ctx_token_expect_or_die(ctx, &TokenType_WHITESPACE);
+    }
+}
+
 XmlNode *xml_parse_xmldecl(Context *ctx)
 {
     XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
@@ -475,10 +485,8 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
         if (ctx_token_try(ctx, &TokenType_XMLDECLEND_SYMBOL))
             break;
 
-        Token *token = ctx_next_token(ctx);
-
-        if (token->type != &TokenType_NAME)
-            continue;  /* Ignore bad tokens? */
+        xml_parse_skip_whitespace(ctx);
+        Token *token = ctx_token_expect_or_die(ctx, &TokenType_NAME);
 
         if (strcmp(token->value, "encoding") != 0) {
             Token *token;
@@ -531,15 +539,6 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
     ctx_token_expect_or_die(ctx, &TokenType_XMLDECLEND_SYMBOL);
 
     return (XmlNode *)new;
-}
-
-void xml_parse_skip_whitespace(Context *ctx)
-{
-    while (!ctx_is_done(ctx)) {
-        if (!ctx_token_try(ctx, &TokenType_WHITESPACE))
-            return;
-        ctx_token_expect_or_die(ctx, &TokenType_WHITESPACE);
-    }
 }
 
 XmlNode_Document *xml_parse_document(Context *ctx)
