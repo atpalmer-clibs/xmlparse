@@ -491,23 +491,14 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
         if (strcmp(token->value, "encoding") != 0) {
             Token *token;
 
-            token = ctx_next_token(ctx);
-            if (token->type != &TokenType_SYMBOL) {
-                fprintf(stderr, "Expected: %s. Found: %s\n", TokenType_SYMBOL.name, token->type->name);
-                exit(-1);
-            }
+            token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
             if (strcmp(token->value, "=") != 0) {
                 fprintf(stderr, "XML encoding must have a value.\n");
                 exit(-1);
             }
 
-            token = ctx_next_token(ctx);
-            if (token->type != &TokenType_QUOTED_VALUE) {
-                fprintf(stderr, "Expected: %s. Found: %s\n", TokenType_QUOTED_VALUE.name, token->type->name);
-                exit(-1);
-            }
+            token = ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
 
-            /* ASSIGN ENCODING */
             new->encoding = strdup(token->value);
         }
 
