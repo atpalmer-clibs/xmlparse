@@ -350,10 +350,10 @@ Token *ctx_next_token(Context *ctx)
     return token;
 }
 
-int ctx_token_try(Context *ctx, const TokenType *type)
+Token *ctx_token_try(Context *ctx, const TokenType *type)
 {
     Token *token = ctx_peek_token(ctx);
-    return token->type == type;
+    return token->type == type ? token : NULL;
 }
 
 Token *ctx_token_expect_or_die(Context *ctx, const TokenType *type)
