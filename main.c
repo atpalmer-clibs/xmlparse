@@ -477,53 +477,55 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
 
         Token *token = ctx_next_token(ctx);
 
-        if (token->type == &TokenType_NAME) {
-            if (strcmp(token->value, "encoding") != 0) {
-                Token *token;
+        if (token->type != &TokenType_NAME)
+            continue;  /* Ignore bad tokens? */
 
-                token = ctx_next_token(ctx);
-                if (token->type != &TokenType_SYMBOL) {
-                    fprintf(stderr, "XML encoding must have a value.\n");
-                    exit(-1);
-                }
-                if (strcmp(token->value, "=") != 0) {
-                    fprintf(stderr, "XML encoding must have a value.\n");
-                    exit(-1);
-                }
+        if (strcmp(token->value, "encoding") != 0) {
+            Token *token;
 
-                token = ctx_next_token(ctx);
-                if (token->type != &TokenType_QUOTED_VALUE) {
-                    fprintf(stderr, "XML encoding must have a value.\n");
-                    exit(-1);
-                }
-
-                /* ASSIGN ENCODING */
-                new->encoding = strdup(token->value);
+            token = ctx_next_token(ctx);
+            if (token->type != &TokenType_SYMBOL) {
+                fprintf(stderr, "XML encoding must have a value.\n");
+                exit(-1);
+            }
+            if (strcmp(token->value, "=") != 0) {
+                fprintf(stderr, "XML encoding must have a value.\n");
+                exit(-1);
             }
 
-            if (strcmp(token->value, "version") != 0) {
-                Token *token;
-
-                token = ctx_next_token(ctx);
-                if (token->type != &TokenType_SYMBOL) {
-                    fprintf(stderr, "XML version must have a value.\n");
-                    exit(-1);
-                }
-                if (strcmp(token->value, "=") != 0) {
-                    fprintf(stderr, "XML version must have a value.\n");
-                    exit(-1);
-                }
-
-                token = ctx_next_token(ctx);
-                if (token->type != &TokenType_QUOTED_VALUE) {
-                    fprintf(stderr, "XML version must have a value.\n");
-                    exit(-1);
-                }
-
-                /* ASSIGN VERSION */
-                new->version = strdup(token->value);
+            token = ctx_next_token(ctx);
+            if (token->type != &TokenType_QUOTED_VALUE) {
+                fprintf(stderr, "XML encoding must have a value.\n");
+                exit(-1);
             }
+
+            /* ASSIGN ENCODING */
+            new->encoding = strdup(token->value);
         }
+
+        if (strcmp(token->value, "version") != 0) {
+            Token *token;
+
+            token = ctx_next_token(ctx);
+            if (token->type != &TokenType_SYMBOL) {
+                fprintf(stderr, "XML version must have a value.\n");
+                exit(-1);
+            }
+            if (strcmp(token->value, "=") != 0) {
+                fprintf(stderr, "XML version must have a value.\n");
+                exit(-1);
+            }
+
+            token = ctx_next_token(ctx);
+            if (token->type != &TokenType_QUOTED_VALUE) {
+                fprintf(stderr, "XML version must have a value.\n");
+                exit(-1);
+            }
+
+            /* ASSIGN VERSION */
+            new->version = strdup(token->value);
+        }
+
     }
 
     ctx_token_expect_or_die(ctx, &TokenType_XMLDECLEND_SYMBOL);
