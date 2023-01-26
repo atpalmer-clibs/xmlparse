@@ -505,23 +505,14 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
         if (strcmp(token->value, "version") != 0) {
             Token *token;
 
-            token = ctx_next_token(ctx);
-            if (token->type != &TokenType_SYMBOL) {
-                fprintf(stderr, "XML version must have a value.\n");
-                exit(-1);
-            }
+            token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
             if (strcmp(token->value, "=") != 0) {
                 fprintf(stderr, "XML version must have a value.\n");
                 exit(-1);
             }
 
-            token = ctx_next_token(ctx);
-            if (token->type != &TokenType_QUOTED_VALUE) {
-                fprintf(stderr, "XML version must have a value.\n");
-                exit(-1);
-            }
+            token = ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
 
-            /* ASSIGN VERSION */
             new->version = strdup(token->value);
         }
 
