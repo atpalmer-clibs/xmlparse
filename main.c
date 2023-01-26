@@ -474,6 +474,28 @@ void xml_parse_skip_whitespace(Context *ctx)
     }
 }
 
+Token *xml_try_parse_attribute(Context *ctx, const char *key)
+{
+    /* TODO: cleanup */
+    Token *token;
+
+    if (!ctx_token_try(ctx, &TokenType_NAME))
+        return NULL;
+
+    token = ctx_peek_token(ctx);
+    if (strcmp(token->value, key) != 0)
+        return NULL;
+    ctx_token_expect_or_die(ctx, &TokenType_NAME);
+
+    token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
+    if (strcmp(token->value, "=") != 0) {
+        fprintf(stderr, "Expected: '=' for attribute \"%s\".\n", key);
+        exit(-1);
+    }
+
+    return ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
+}
+
 XmlNode *xml_parse_xmldecl(Context *ctx)
 {
     XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
@@ -482,47 +504,28 @@ XmlNode *xml_parse_xmldecl(Context *ctx)
     xml_expect_NAME(ctx, "xml");
 
     for (;;) {
+        xml_parse_skip_whitespace(ctx);
+
         if (ctx_token_try(ctx, &TokenType_XMLDECLEND_SYMBOL))
             break;
 
-        xml_parse_skip_whitespace(ctx);
-        Token *token = ctx_peek_token(ctx);
-
-        if (!ctx_token_try(ctx, &TokenType_NAME))
-            ctx_token_expect_or_die(ctx, &TokenType_NAME);  /* TODO: we know we're dying */
-
-        if (strcmp(token->value, "encoding") != 0) {
-            Token *token;
-
-            ctx_token_expect_or_die(ctx, &TokenType_NAME);
-
-            token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
-            if (strcmp(token->value, "=") != 0) {
-                fprintf(stderr, "XML encoding must have a value.\n");
-                exit(-1);
-            }
-
-            token = ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
-
-            new->encoding = strdup(token->value);
+        Token *encoding = xml_try_parse_attribute(ctx, "encoding");
+        if (encoding) {
+            new->encoding = strdup(encoding->value);
+            continue;
         }
 
-        if (strcmp(token->value, "version") != 0) {
-            Token *token;
-
-            ctx_token_expect_or_die(ctx, &TokenType_NAME);
-
-            token = ctx_token_expect_or_die(ctx, &TokenType_SYMBOL);
-            if (strcmp(token->value, "=") != 0) {
-                fprintf(stderr, "XML version must have a value.\n");
-                exit(-1);
-            }
-
-            token = ctx_token_expect_or_die(ctx, &TokenType_QUOTED_VALUE);
-
-            new->version = strdup(token->value);
+        Token *version = xml_try_parse_attribute(ctx, "version");
+        if (version) {
+            new->version = strdup(version->value);
+            continue;
         }
 
+        Token *token = ctx_next_token(ctx);
+        fprintf(stderr, "Expected: \"encoding\" or \"version\" attribute. Found: \"%s\" token with value: \"%s\"\n",
+            token->type->name,
+            token->value);
+        exit(-1);
     }
 
     ctx_token_expect_or_die(ctx, &TokenType_XMLDECLEND_SYMBOL);
