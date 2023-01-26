@@ -441,8 +441,19 @@ void xmlnode_destroy(XmlNode *self)
 XmlNode *xml_parse_xmldecl(Context *ctx)
 {
     XmlNode_XmlDecl *new = (XmlNode_XmlDecl *)xmlnode_new_xmldecl();
+    Token *token;
 
-    Token *token = ctx_next_token(ctx);
+    token = ctx_next_token(ctx);
+    if (!token) {
+        fprintf(stderr, "Error: No tokens in document.\n");
+        exit(-1);
+    }
+    if (token->type != &TokenType_XMLDECLSTART_SYMBOL) {
+        fprintf(stderr, "Error: Document must start with XML declaration.\n");
+        exit(-1);
+    }
+
+    token = ctx_next_token(ctx);
     if (token->type != &TokenType_NAME) {
         fprintf(stderr, "Expecting NAME token. Found: \"%s\". XML decl must begin <?xml\n", token->type->name);
         exit(-1);
@@ -525,16 +536,6 @@ XmlNode_Document *xml_parse_document(Context *ctx)
     XmlNode_Document *doc = (XmlNode_Document *)xmlnode_new_document();
 
     xml_parse_skip_whitespace(ctx);
-
-    Token *token = ctx_next_token(ctx);
-    if (!token) {
-        fprintf(stderr, "Error: No tokens in document.\n");
-        exit(-1);
-    }
-    if (token->type != &TokenType_XMLDECLSTART_SYMBOL) {
-        fprintf(stderr, "Error: Document must start with XML declaration.\n");
-        exit(-1);
-    }
 
     XmlNode *xmldecl = xml_parse_xmldecl(ctx);
 
