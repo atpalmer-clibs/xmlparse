@@ -537,9 +537,7 @@ XmlNode_Document *xml_parse_document(Context *ctx)
 
     xml_parse_skip_whitespace(ctx);
 
-    XmlNode *xmldecl = xml_parse_xmldecl(ctx);
-
-    doc->xmldecl = xmldecl;
+    doc->xmldecl = xml_parse_xmldecl(ctx);
 
     return doc;
 }
