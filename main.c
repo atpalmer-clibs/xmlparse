@@ -368,6 +368,20 @@ Token *ctx_token_ensure_type(Context *ctx, const TokenType *type)
     return token;
 }
 
+Token *ctx_token_ensure_value(Context *ctx, const TokenType *type, const char *value)
+{
+    Token *token = ctx_token_ensure_type(ctx, type);
+    if (strcmp(token->value, value) != 0) {
+        fprintf(stderr, "Expected: \"%s\" <%s>; Found: \"%s\" <%s>.\n",
+            value,
+            type->name,
+            token->value,
+            token->type->name);
+        exit(-1);
+    }
+    return token;
+}
+
 Token *ctx_token_consume(Context *ctx, Token *token)
 {
     Token *next = ctx_next_token(ctx);
@@ -499,13 +513,7 @@ Token *xml_try_parse_attribute(Context *ctx, const char *key)
     if (strcmp(token->value, key) != 0)
         return NULL;
     ctx_token_consume(ctx, token);
-
-    token = ctx_token_ensure_type(ctx, &TokenType_SYMBOL);
-    if (strcmp(token->value, "=") != 0) {
-        fprintf(stderr, "Expected: '=' for attribute \"%s\".\n", key);
-        exit(-1);
-    }
-
+    ctx_token_ensure_value(ctx, &TokenType_SYMBOL, "=");
     return ctx_token_ensure_type(ctx, &TokenType_QUOTED_VALUE);
 }
 
