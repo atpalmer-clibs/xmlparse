@@ -356,6 +356,16 @@ Token *ctx_token_try(Context *ctx, const TokenType *type)
     return token->type == type ? token : NULL;
 }
 
+Token *ctx_token_try_value(Context *ctx, const TokenType *type, const char *value)
+{
+    Token *token = ctx_token_try(ctx, type);
+    if (!token)
+        return NULL;
+    if (strcmp(token->value, value) != 0)
+        return NULL;
+    return token;
+}
+
 Token *ctx_token_ensure_type(Context *ctx, const TokenType *type)
 {
     Token *token = ctx_next_token(ctx);
@@ -505,12 +515,8 @@ void xml_parse_skip_whitespace(Context *ctx)
 
 Token *xml_try_parse_attribute(Context *ctx, const char *key)
 {
-    Token *token;
-
-    token = ctx_token_try(ctx, &TokenType_NAME);
+    Token *token = ctx_token_try_value(ctx, &TokenType_NAME, key);
     if (!token)
-        return NULL;
-    if (strcmp(token->value, key) != 0)
         return NULL;
     ctx_token_consume(ctx, token);
     ctx_token_ensure_value(ctx, &TokenType_SYMBOL, "=");
